@@ -1,0 +1,52 @@
+{
+ "case": "範例:某高級中學節能輔導",
+ "price": 3.08,
+ "measures": [
+  {
+   "name": "汰換教室及辦公室老舊分離式冷氣",
+   "kind": "school",
+   "hours": 1800,
+   "load": 0.8,
+   "decay": 0.01,
+   "age": 15,
+   "cspf": 3.2,
+   "kwh_before": 191998,
+   "kwh_after": 105471,
+   "save": 86527,
+   "money": 266503,
+   "invest": 1896000,
+   "payback": 7.11,
+   "co2": 40.32,
+   "unit_costs": []
+  },
+  {
+   "name": "汰換活動中心水冷式冰水主機及附屬設備",
+   "kind": "school",
+   "hours": 173,
+   "load": 0.8,
+   "decay": 0.01,
+   "age": 22,
+   "kw_rt": 0.93,
+   "kwh_before": 19315,
+   "kwh_after": 13458,
+   "save": 5857,
+   "money": 18040,
+   "invest": 3500800,
+   "payback": 194.06,
+   "co2": 2.73,
+   "long_payback_ack": true,
+   "unit_costs": [
+    {
+     "kind": "chiller",
+     "rt": 125,
+     "cost": 2500000
+    },
+    {
+     "kind": "pump",
+     "lpm": 1200,
+     "cost": 33600
+    }
+   ]
+  }
+ ]
+}

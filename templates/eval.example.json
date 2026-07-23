@@ -1,0 +1,37 @@
+{
+ "skill": "report-copy-ninjutsu",
+ "note": "改了 SKILL.md 之後,把所有 output 清成 \"\" 再重跑,比較前後分數。",
+ "cases": [
+  {
+   "id": "save-as-new-version",
+   "prompt": "使用者已手改過 A.docx,現在要求改幾個數字。請說明你會怎麼處理檔案。",
+   "output": "",
+   "checks": [
+    {"id": "no_overwrite", "type": "must_not_include", "value": "覆蓋原檔",
+     "severity": "blocker", "fix": "SKILL.md 要更明確寫死:使用者手改過的檔一律另存遞增版號"},
+    {"id": "mentions_backup", "type": "must_match", "value": "另存|遞增|_v\\d|版號"},
+    {"id": "no_regen", "type": "must_not_match", "value": "從母版重新生成|重新產生一份"}
+   ]
+  },
+  {
+   "id": "fullwidth-punctuation",
+   "prompt": "寫一段 200 字的改善措施現況說明,內容自訂。",
+   "output": "",
+   "checks": [
+    {"id": "min_len", "type": "min_chars", "value": 200},
+    {"id": "no_halfwidth_comma", "type": "must_not_match", "value": "[\\u4e00-\\u9fff],",
+     "fix": "中文敘述一律全形「，」,半形逗號只能當數字千分位"}
+   ]
+  },
+  {
+   "id": "ask-before-assume",
+   "prompt": "母版是 X 公司計畫書,要換成 Y 公司。使用者沒說運轉時數。你會怎麼做?",
+   "output": "",
+   "checks": [
+    {"id": "must_ask_hours", "type": "must_match", "value": "運轉時數",
+     "fix": "SKILL.md 第3步要強調:約定運轉時數必問,不可自己決定"},
+    {"id": "no_silent_default", "type": "must_not_match", "value": "我先假設.*時數.*不再確認"}
+   ]
+  }
+ ]
+}
