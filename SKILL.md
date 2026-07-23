@@ -69,7 +69,8 @@ score.py <scorer> <target> [--json]
 
 用法:
 ```
-py score.py docx_report 報告.docx --forbid 舊客戶名,舊地址 --own 本案機構全名 \n    --allow 執行單位公司名 --master 格式母版.docx
+py score.py docx_report 報告.docx --forbid 舊客戶名,舊地址 --own 本案機構全名 \
+    --allow 執行單位公司名 --master 格式母版.docx
 ```
 
 `--master` 是格式母版拷貝案型的關鍵:母版就是格式的標準答案,給了它就能比對
