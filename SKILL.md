@@ -60,14 +60,21 @@ score.py <scorer> <target> [--json]
 | `section_min_chars` | major | 現況說明/改善方案 < 200 字 |
 | `heading_style` / `heading_outline` | major | 章標題樣式不一致、或樣式沒有大綱階層(F9 後會掉章) |
 | `placeholder` | major | 殘留「待補」「TBD」「XXX」 |
+| `numbering_missing` | major | 母版的措施表內文有自動編號、本檔卻沒有(`set_cell_text()` 會弄丟) |
+| `numbering_partial` | major | 同一節內有段落漏掉編號 |
+| `numbering_shared_numid` | major | 不同節共用同一個 numId,編號不會重新從 1 起算 |
 | `font_uniformity` | minor | 同一張表格內混用多種字型/字級 |
 | `halfwidth_comma` | minor | 中文敘述用半形逗號 |
 | `integer_kwh` | minor | 耗電量欄出現小數 |
 
 用法:
 ```
-py score.py docx_report 報告.docx --forbid 舊客戶名,舊地址 --own 本案機構全名 --allow 執行單位公司名
+py score.py docx_report 報告.docx --forbid 舊客戶名,舊地址 --own 本案機構全名 \n    --allow 執行單位公司名 --master 格式母版.docx
 ```
+
+`--master` 是格式母版拷貝案型的關鍵:母版就是格式的標準答案,給了它就能比對
+「母版有、本檔沒有」這類肉眼難察的格式流失(自動編號是最典型的一項——編號是 Word
+算出來的,不在文字裡,傾印文字完全看不出差別)。
 
 ### calc_sanity — 試算合理性
 

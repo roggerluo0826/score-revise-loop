@@ -126,7 +126,7 @@ def run_fmt(r):
 
 
 # =========================== 主檢查 ===========================
-def score(path, forbid=(), own_name=None, min_chars=200, allow=(), **_):
+def score(path, forbid=(), own_name=None, min_chars=200, allow=(), master=None, **_):
     rep = Report(target=path, scorer='docx_report')
     d = docx.Document(path)
     T = find_tables(d)
@@ -141,9 +141,83 @@ def score(path, forbid=(), own_name=None, min_chars=200, allow=(), **_):
     _check_font_uniformity(d, rep)
     _check_heading_style(d, rep)
     _check_toc(path, rep)
+    _check_numbering(T, rep, master)
     ms = _check_measures(T, rep, min_chars)
     _check_summary(T, rep, ms)
     return rep
+
+
+# ---------- 自動編號:母版有、本檔卻掉了(set_cell_text 最常見的災情) ----------
+SEC_RE = re.compile(r'^[一二三四五]、')
+
+
+def _numbering_profile(table):
+    """回傳 [(節標題, [該節內文段落的 numId 或 None]), ...]"""
+    secs, cur = [], None
+    for p in table.cell(6, 0).paragraphs:
+        txt = ''.join(x.text or '' for x in p._element.iter(qn('w:t'))).strip()
+        if not txt:
+            continue
+        if SEC_RE.match(txt):
+            cur = (txt[:8], [])
+            secs.append(cur)
+            continue
+        if cur is None:
+            continue
+        pPr = p._element.find(qn('w:pPr'))
+        npr = pPr.find(qn('w:numPr')) if pPr is not None else None
+        nid = npr.find(qn('w:numId')) if npr is not None else None
+        cur[1].append(nid.get(qn('w:val')) if nid is not None else None)
+    return secs
+
+
+def _check_numbering(T, rep, master_path):
+    if not T['measures']:
+        return rep.skip('numbering', '沒有改善措施建議表')
+    rep.ran('numbering')
+
+    master_numbers = None
+    if master_path:
+        try:
+            md = docx.Document(master_path)
+            mt = find_tables(md)['measures']
+            master_numbers = any(any(n for n in ids)
+                                 for t in mt for _, ids in _numbering_profile(t))
+            rep.meta['母版措施表是否用自動編號'] = 'YES' if master_numbers else 'no'
+        except Exception as e:
+            rep.skip('numbering_vs_master', f'讀不到母版:{e}')
+
+    for mi, t in enumerate(T['measures'], 1):
+        tag = f'改善措施建議表({"一二三四五六七八九十"[mi-1]})'
+        prof = _numbering_profile(t)
+        seen = {}
+        for sec, ids in prof:
+            if not ids:
+                continue
+            if not any(ids):
+                sev = 'major' if master_numbers else 'minor'
+                rep.add('numbering_missing', sev,
+                        f'「{sec}」底下 {len(ids)} 段內文都沒有自動編號'
+                        + ('(母版有)' if master_numbers else '(母版未提供,請自行確認)'),
+                        where=tag,
+                        fix='替該節內文段落補上 w:numPr(每節配一個未被使用的 numId,'
+                            '節標題本身不編號);set_cell_text() 寫多行時會弄丟編號')
+            elif not all(ids):
+                rep.add('numbering_partial', 'major',
+                        f'「{sec}」底下有 {sum(1 for i in ids if not i)}/{len(ids)} 段漏掉編號',
+                        where=tag, fix='把該節所有內文段落補成同一個 numId')
+            used = {i for i in ids if i}
+            if len(used) > 1:
+                rep.add('numbering_mixed', 'minor',
+                        f'「{sec}」底下混用了 {len(used)} 組編號 {sorted(used)}',
+                        where=tag, fix='同一節內文應共用同一個 numId')
+            for i in used:
+                if i in seen and seen[i] != sec:
+                    rep.add('numbering_shared_numid', 'major',
+                            f'「{sec}」與「{seen[i]}」共用 numId {i},'
+                            f'編號不會重新從 1 起算',
+                            where=tag, fix=f'替「{sec}」改配一個沒被用過的 numId')
+                seen[i] = sec
 
 
 def _check_stale(d, rep, forbid, own_name, allow=()):

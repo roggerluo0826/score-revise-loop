@@ -3,6 +3,7 @@
 
 用法(Windows 繁中請先 set PYTHONUTF8=1):
     py score.py docx_report  報告.docx [--forbid 舊客戶名,舊地址] [--own 本案機構全名]
+                                       [--master 格式母版.docx]
     py score.py calc_sanity  試算.json
     py score.py skill_eval   eval.json
     py score.py all          報告.docx --calc 試算.json
@@ -42,6 +43,7 @@ def main(argv=None):
     ap.add_argument('--forbid', default='', help='舊客戶字串,逗號分隔')
     ap.add_argument('--own', default=None, help='本案機構全名,用來判定機構名殘影')
     ap.add_argument('--allow', default='', help='允許出現的其他機構名(執行單位等),逗號分隔')
+    ap.add_argument('--master', default=None, help='格式母版 docx,用來比對自動編號等格式慣例')
     ap.add_argument('--threshold', type=int, default=90)
     ap.add_argument('--min-chars', type=int, default=200)
     ap.add_argument('--json', action='store_true')
@@ -49,7 +51,7 @@ def main(argv=None):
 
     kw = dict(forbid=[s for s in a.forbid.split(',') if s.strip()],
               allow=[s for s in a.allow.split(',') if s.strip()],
-              own_name=a.own, min_chars=a.min_chars)
+              own_name=a.own, min_chars=a.min_chars, master=a.master)
 
     jobs = []
     if a.scorer == 'all':
