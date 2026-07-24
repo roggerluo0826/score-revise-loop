@@ -63,6 +63,8 @@ score.py <scorer> <target> [--json]
 | `numbering_missing` | major | 母版的措施表內文有自動編號、本檔卻沒有(`set_cell_text()` 會弄丟) |
 | `numbering_partial` | major | 同一節內有段落漏掉編號 |
 | `numbering_shared_numid` | major | 不同節共用同一個 numId,編號不會重新從 1 起算 |
+| `measure_spacing` | major | 措施表內文段落不是固定行距 18 點(`set_cell_text()`/新增段落會塌回預設,有 `--master` 時取母版眾數為準) |
+| `measure_spacing_after` | minor | 措施表內文段落缺段後 0.5 行(與後段沒隔開) |
 | `font_uniformity` | minor | 同一張表格內混用多種字型/字級 |
 | `halfwidth_comma` | minor | 中文敘述用半形逗號 |
 | `integer_kwh` | minor | 耗電量欄出現小數 |

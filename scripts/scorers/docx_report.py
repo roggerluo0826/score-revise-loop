@@ -142,6 +142,7 @@ def score(path, forbid=(), own_name=None, min_chars=200, allow=(), master=None, 
     _check_heading_style(d, rep)
     _check_toc(path, rep)
     _check_numbering(T, rep, master)
+    _check_measure_spacing(T, rep, master)
     ms = _check_measures(T, rep, min_chars)
     _check_summary(T, rep, ms)
     return rep
@@ -218,6 +219,93 @@ def _check_numbering(T, rep, master_path):
                             f'編號不會重新從 1 起算',
                             where=tag, fix=f'替「{sec}」改配一個沒被用過的 numId')
                 seen[i] = sec
+
+
+# ---------- 改善措施表內文行距:固定行距18pt + 段後0.5行(set_cell_text 最常塌掉) ----------
+# 母版每格「一、現況說明 / 二、改善方案」的敘述段落是固定行距 18 點(w:line=360
+# w:lineRule=exact)並段後 0.5 行(w:afterLines=50 / w:after≈180)。set_cell_text() 或
+# add_paragraph() 新增段落若走 python-docx 預設,行距會塌回單行、段後歸零,整格看起來
+# 鬆散或擠壓,而且傾印文字看不出差別。(2026-07 林園高中案實際踩過)
+EXP_LINE = '360'          # 18pt × 20 twips
+EXP_RULE = 'exact'
+EXP_AFTERLINES = '50'     # 0.5 行(afterLines 單位為 1/100 行)
+
+
+def _para_spacing(p):
+    """回傳段落直接掛在 pPr 上的 w:spacing 屬性 dict;沒有就回 None。"""
+    pPr = p._element.find(qn('w:pPr'))
+    spc = pPr.find(qn('w:spacing')) if pPr is not None else None
+    if spc is None:
+        return None
+    return dict(line=spc.get(qn('w:line')), rule=spc.get(qn('w:lineRule')),
+                afterLines=spc.get(qn('w:afterLines')), after=spc.get(qn('w:after')))
+
+
+def _prose_paragraphs(table):
+    """措施表本文格(cell 6,0)裡的敘述段落,略過空段與「一、/二、」節標題。"""
+    for p in table.cell(6, 0).paragraphs:
+        txt = ''.join(x.text or '' for x in p._element.iter(qn('w:t'))).strip()
+        if not txt or SEC_RE.match(txt):
+            continue
+        yield p, txt
+
+
+def _expected_spacing(master_path):
+    """從母版措施表敘述段落取眾數行距/段後;讀不到母版就用慣例預設。回傳 (dict, 來自母版?)"""
+    exp = dict(line=EXP_LINE, rule=EXP_RULE, afterLines=EXP_AFTERLINES)
+    if not master_path:
+        return exp, False
+    try:
+        md = docx.Document(master_path)
+        from collections import Counter
+        c = Counter()
+        for t in find_tables(md)['measures']:
+            for p, _ in _prose_paragraphs(t):
+                s = _para_spacing(p)
+                if s and s['rule'] == 'exact' and s['line']:
+                    c[(s['line'], s['rule'], s['afterLines'])] += 1
+        if c:
+            line, rule, al = c.most_common(1)[0][0]
+            return dict(line=line, rule=rule, afterLines=al), True
+    except Exception:
+        pass
+    return exp, False
+
+
+def _check_measure_spacing(T, rep, master_path):
+    if not T['measures']:
+        return rep.skip('measure_spacing', '沒有改善措施建議表')
+    rep.ran('measure_spacing')
+    exp, from_master = _expected_spacing(master_path)
+    try:
+        want_pt = f"{int(exp['line']) / 20:g}"
+    except (TypeError, ValueError):
+        want_pt = exp['line']
+    rep.meta['措施表內文應有行距'] = (
+        f"固定行距 {want_pt} 點(line={exp['line']} {exp['rule']}) + 段後 0.5 行"
+        f"(afterLines={exp['afterLines']}) — 來源:{'母版' if from_master else '慣例'}")
+    for mi, t in enumerate(T['measures'], 1):
+        tag = f'改善措施建議表({"一二三四五六七八九十"[mi-1]})'
+        bad_line = bad_after = 0
+        sample = None
+        for p, txt in _prose_paragraphs(t):
+            s = _para_spacing(p)
+            if not (s and s['rule'] == exp['rule'] and s['line'] == exp['line']):
+                bad_line += 1
+                sample = sample or txt[:24]
+            if not (s and s['afterLines'] == exp['afterLines']):
+                bad_after += 1
+        if bad_line:
+            rep.add('measure_spacing', 'major',
+                    f'{bad_line} 段內文不是固定行距 {want_pt} 點,行距塌成預設會被打回',
+                    where=f'{tag} 例:{sample!r}',
+                    fix=f'把該格內文段落設成 w:line={exp["line"]} w:lineRule={exp["rule"]}'
+                        f'(固定行距 {want_pt} 點);deepcopy 母版同格敘述段落再改字最保險')
+        if bad_after:
+            rep.add('measure_spacing_after', 'minor',
+                    f'{bad_after} 段內文缺段後 0.5 行(與後段沒隔開,看起來擠成一團)',
+                    where=tag,
+                    fix=f'在該段 w:spacing 補 w:afterLines={exp["afterLines"]}(段後 0.5 行)')
 
 
 def _check_stale(d, rep, forbid, own_name, allow=()):
